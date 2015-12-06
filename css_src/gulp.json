@@ -1,0 +1,14 @@
+[
+    {
+        "dist": "css/",
+        "srcs": ["css_src/"]
+    },
+    {
+        "dist": "style.css",
+        "srcs": ["style_body.css", "style_h1.css"]
+    },
+    {
+        "dist": "page.css",
+        "srcs": ["page_h1.css", "page_h3.css"]
+    }
+]
