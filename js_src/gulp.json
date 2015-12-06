@@ -1,0 +1,14 @@
+[
+    {
+        "dist": "js/",
+        "srcs": ["js_src/"]
+    },
+    {
+        "dist": "script.js",
+        "srcs": ["script_ele.js", "script_htm.js"]
+    },
+    {
+        "dist": "page.js",
+        "srcs": ["page_time.js", "page_code.js"]
+    }
+]
