@@ -3,6 +3,8 @@ include 'viewer.php';
 $data = array(
     'title'     => 'hello world',
     'h1text'    => 'hello smarty',
-    'IS_DEV'    => rand(0, 9) < 5
 );
+if (rand(0, 9) < 5) {
+    $data['debug']  = true;
+}
 tpl_display('page', $data);

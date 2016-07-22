@@ -1,12 +1,1 @@
-function show_time(id, adjustment) {
-    (function () {
-        var now = new Date(new Date - (adjustment || 0));
-        get_ele(id).innerHTML = now;
-        setTimeout(arguments.callee, 200);
-    })();
-}
-function show_code(id) {
-    var ele     = get_ele(id);
-    ele.value   = get_htm();
-    ele.style.height = ele.scrollHeight + 'px';
-}
+function show_time(e,t){!function(){var n=new Date(new Date-(t||0));get_ele(e).innerHTML=n,setTimeout(arguments.callee,200)}()}function show_code(e){var t=get_ele(e);t.value=get_htm(),t.style.height=t.scrollHeight+"px"}

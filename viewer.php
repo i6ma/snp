@@ -1,98 +1,76 @@
 <?php
 
-function tpl_display($tpl_name = 'html', $data = array()) {
-    $viewer = tpl_get_viewer();
-    $viewer->assign($data);
-    $viewer->display($tpl_name . '.tpl');
-}
+function tpl_display($view = '', $vars = array()) {
+    $dir_sep    = DIRECTORY_SEPARATOR;
+    $dir_base   = __DIR__ . $dir_sep;
+    $dir_smarty = $dir_base . implode($dir_sep, array('..', 'smarty-3.1.16', 'libs', ''));
+    $dir_tpls   = $dir_base . 'tpls' . $dir_sep;
+    $dir_tplc   = $dir_base . 'tplc' . $dir_sep;
+    $dir_plgs   = $dir_base . 'plugins' . $dir_sep;
 
-
-
-function tpl_get_viewer($dir_base = '') {
-    if (!$dir_base) {
-        $dir_base   = rtrim(realpath(dirname(__FILE__)), '\\/') . '/';
-    }
-    $dir_views      = $dir_base     . '';
-    $dir_smarty     = $dir_base     . '../smarty-3.1.16/libs/';
-    require_once($dir_smarty        . 'Smarty.class.php');
-
+    require_once($dir_smarty . 'Smarty.class.php');
     $smarty = new Smarty;
-    $smarty->setTemplateDir($dir_views  . 'templates/');
-    $smarty->setCompileDir($dir_views   . '../templates_c/');
-    $smarty->left_delimiter     = '{%';
-    $smarty->right_delimiter    = '%}';
+    $smarty->left_delimiter = '<%';
+    $smarty->right_delimiter = '%>';
+    $smarty->setTemplateDir($dir_tpls);
+    $smarty->setCompileDir($dir_tplc);
+    $smarty->addPluginsDir($dir_plgs);
+    $smarty->registerFilter('pre', 'tpl_pre_filter');
 
-    $smarty->registerFilter('pre', 'tpl_filter_pre');
-    return $smarty;
-}
-
-
-
-function tpl_filter_pre($tpl_source) {
-    $tpl_source = preg_replace('/[\t ]*[\r\n]+[\t ]*/', "\n", $tpl_source);
-    $tpl_source = preg_replace_callback(
-        '/\n<style (data-attr="style")?>\n([\s\S]*?)\n<\/style>\n/',
-        function ($matches) {
-            $style  = preg_replace('/\n\/\*[\s\S]*?\*\/\s*|\s*\/\*[\s\S]*?\*\/\n/', '', $matches[2]);
-            $style  = preg_replace('/\n/', '', $style);
-            if ($matches[1]) {
-                return '<style>' . $style . '</style>';
-            }
-            return $style;
-        },
-        $tpl_source
-    );
-    $tpl_source = preg_replace_callback(
-        '/\n<script (data-attr="script")?>\n([\s\S]*?)\n<\/script>\n/',
-        function ($matches) {
-            $lines  = explode("\n", $matches[2]);
-            foreach ($lines as $index => $line) {
-                $line   = preg_replace('/\s*\/\/[^\'"]*$/', '', $line);
-                $lines[$index] = $line;
-                if (strpos($line, '//') !== false) {
-                    $lines[$index] = $line . "\n";
-                }
-            }
-            if ($matches[1]) {
-                $lines[0]   = '<script>' . $lines[0];
-                $lines[]    = '</script>';
-            }
-            return implode('', $lines);
-        },
-        $tpl_source
-    );
-    return preg_replace('/([>}])[\n]([{<])/', '${1}${2}', $tpl_source);
-}
-
-
-
-function tpl_get_src_files($dist_list = array(), $src_json_file = '') {
-    $src_files  = [];
-    $dir_dist   = '';
-    $dir_src    = '';
-    ob_start();
-        include $src_json_file;
-        $src_json   = ob_get_contents();
-    ob_end_clean();
-    $src_json   = json_decode($src_json, true);
-    foreach ($dist_list as $dist) {
-        $match  = 0;
-        foreach ($src_json as &$item) {
-            if (substr($item['dist'], -1) === '/') {
-                $dir_dist   = $item['dist'];
-                $dir_src    = $item['srcs'][0];
-                continue;
-            }
-            if ($dir_dist . $item['dist'] === $dist) {
-                $match  = 1;
-                foreach ($item['srcs'] as $src) {
-                    $src_files[] = $dir_src . $src;
-                }
-            }
-        }
-        if (!$match) {
-            $src_files[] = $dist;
-        }
+    if (isset($vars['debug'])) {
+        $smarty->force_compile = true;
     }
-    return $src_files;
+    $smarty->assign($vars);
+    $smarty->display($view . '.tpl');
+    if (isset($vars['debug'])) {
+        $smarty->clearCompiledTemplate();
+    }
+}
+
+
+
+function tpl_pre_filter($tpl_source, Smarty_Internal_Template $template) {
+    $debug  = isset($template->smarty->tpl_vars['debug']);
+    $ldeli  = $template->smarty->left_delimiter;
+    $rdeli  = $template->smarty->right_delimiter;
+    $tpl_source = preg_replace('/[\t ]*[\r\n]+[\t ]*/', "\n", trim($tpl_source));
+    $tpl_source = tpl_filter_style($tpl_source, function ($content, $matches) use ($ldeli, $rdeli) {
+        return $ldeli . "capture append = 'tpa_" . $matches[2] . "'" . $rdeli .
+                $content . $ldeli . '/capture' . $rdeli;
+    }, $debug);
+    return $debug ? $tpl_source : preg_replace('/>\n+</', '><', $tpl_source);
+}
+
+
+
+function tpl_filter_style($codes = '', $callback = null, $debug = false) {
+    return preg_replace_callback(
+        '/<(style|script) tpa="(\w*)"(.*?)>\n([\s\S]*?)\n<\/(?:style|script)>/',
+        function ($matches) use ($callback, $debug) {
+            $tob_type   = $matches[1];
+            $tob_name   = $matches[2];
+            $tob_pams   = $matches[3];
+            $content    = $matches[4];
+            if ($debug || strpos($tob_pams, 'debug') !== false) {
+                // debug 模式
+            } else if ($tob_type === 'style') {
+                $content    = preg_replace('/\s*\/\*[\s\S]*?\*\/\s*/', '', $content);
+                $content    = preg_replace('/\n/', '', $content);
+            } else {
+                $lines      = explode("\n", $content);
+                foreach ($lines as $index => $line) {
+                    $line   = preg_replace('/\s*\/\/[^\'"]*$/', '', $line);
+                    $lines[$index] = $line . (strpos($line, '//') === false ? '' : "\n");
+                }
+                $content    = implode('', $lines);
+            }
+            if ($tob_name && is_callable($callback)) {
+                $fcontent = $callback($content, $matches);
+                return is_string($fcontent) ? $fcontent : $content;
+            } else {
+                return '<' . $tob_type . $tob_pams . '>' . $content . '</' . $tob_type . '>';
+            }
+        },
+        $codes
+    );
 }

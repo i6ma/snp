@@ -1,6 +1,1 @@
-function get_ele(id) {
-    return document.getElementById(id);
-}
-function get_htm() {
-    return document.documentElement.outerHTML;
-}
+function get_ele(e){return document.getElementById(e)}function get_htm(){return document.documentElement.outerHTML}

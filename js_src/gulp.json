@@ -4,6 +4,10 @@
         "srcs": ["js_src/"]
     },
     {
+        "dist": "writer.js",
+        "srcs": ["writer.js"]
+    },
+    {
         "dist": "script.js",
         "srcs": ["script_ele.js", "script_htm.js"]
     },
